@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.185.0/http/server.ts";
 import puppeteer from "https://deno.land/x/puppeteer@16.2.0/mod.ts";
 
+export 
+
 async function getData() {
   let browser;
   let page;

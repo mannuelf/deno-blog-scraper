@@ -1,0 +1,42 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - 8000:8000
+    depends_on:
+      - redis
+    networks:
+      - deno-scrape-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`api.techreader.com`)"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+
+  client:
+    build:
+      context: ./client
+      args:
+        GIT_REVISION: ${GIT_REVISION}
+    ports:
+      - 5000:5000
+    networks:
+      - deno-scrape-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.client.rule=Host(`www.techreader.com`)"
+      - "traefik.http.services.client.loadbalancer.server.port=5000"
+
+  redis:
+    build:
+      context: ./redis
+    volumes:
+      - redis-data:/data
+    networks:
+      - deno-scrape-network
+
+networks:
+  deno-scrape-network:
+
+volumes:
+  redis-data:
