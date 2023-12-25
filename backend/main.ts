@@ -1,9 +1,14 @@
 import { serve } from "https://deno.land/std@0.185.0/http/server.ts";
 import puppeteer from "https://deno.land/x/puppeteer@16.2.0/mod.ts";
+import { createLazyClient } from "https://deno.land/x/redis/mod.ts";
 
-export 
+const redis = await createLazyClient({
+  hostname: "localhost",
+  port: 6379,
+});
 
 async function getData() {
+  const blogName = "mannuelferreira";
   let browser;
   let page;
   try {
@@ -32,6 +37,7 @@ async function getData() {
       }),
     );
 
+    redis.set(blogName, JSON.stringify(articlesData));
     console.log(articlesData);
   } catch (error) {
     console.log("🔥", error);
