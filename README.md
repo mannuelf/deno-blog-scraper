@@ -1,17 +1,17 @@
 # Deno blog scraper
 
-Scrape all the blogs you want.
+## Architecture
 
-Install Puppeteer build of chrome to deno cache:
+![architecture](.github/architecture.png)
 
-```bash
-deno task puppeteer
-```
+## Backend
 
-Start the deno server
+[Read guide](/backend/README.md)
 
-```bash
-deno task start
-```
+## Client
 
-go to <http://localhost:8000/> to trigger a scrape.
+[Read guide](/client/README.md)
+
+## Redis
+
+[Read guide](/redis/README.md)
