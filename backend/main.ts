@@ -3,12 +3,14 @@ import puppeteer from "https://deno.land/x/puppeteer@16.2.0/mod.ts";
 import { ElementHandle } from "https://deno.land/x/puppeteer@16.2.0/vendor/puppeteer-core/puppeteer/common/ElementHandle.js";
 import { createLazyClient } from "https://deno.land/x/redis@v0.32.0/mod.ts";
 
-const port = Number(Deno.env.get("PORT")) || 3000;
+const PORT = 3000 as const;
 
-const redis = await createLazyClient({
+const redisClient = createLazyClient({
   hostname: "localhost",
   port: 6379,
 });
+
+console.assert(!redisClient.isConnected);
 
 async function getData() {
   const blogName = "mannuelferreira";
@@ -49,7 +51,12 @@ async function getData() {
       }),
     );
 
-    redis.set(blogName, JSON.stringify(articlesData));
+    const setPost = await redisClient.sendCommand("SET", [
+      blogName,
+      JSON.stringify(articlesData),
+    ]);
+    setPost;
+    console.assert(setPost === "OK");
   } catch (error) {
     console.log("🔥", error);
   } finally {
@@ -62,4 +69,4 @@ const handler = async (_request: Request): Promise<Response> => {
   return new Response("Hello, World!");
 };
 
-serve(handler, { port });
+serve(handler, { port: PORT });
