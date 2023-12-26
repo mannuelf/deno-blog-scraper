@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.185.0/http/server.ts";
 import puppeteer from "https://deno.land/x/puppeteer@16.2.0/mod.ts";
-import { createLazyClient } from "https://deno.land/x/redis/mod.ts";
+import { ElementHandle } from "https://deno.land/x/puppeteer@16.2.0/vendor/puppeteer-core/puppeteer/common/ElementHandle.js";
+import { createLazyClient } from "https://deno.land/x/redis@v0.32.0/mod.ts";
+
+const port = Number(Deno.env.get("PORT")) || 3000;
 
 const redis = await createLazyClient({
   hostname: "localhost",
@@ -11,34 +14,42 @@ async function getData() {
   const blogName = "mannuelferreira";
   let browser;
   let page;
+
   try {
     browser = await puppeteer.launch();
     page = await browser.newPage();
     await page.goto("https://mannuelferreira.com/posts");
-    
+
     const articleElements = await page.$$("div[data-test-posts] article");
 
     const articlesData = await Promise.all(
-      articleElements.map(async (elementHandle) => {
-        const title = await elementHandle.$eval("span.post-title", (el) =>
-          el.textContent.trim());
-        const url = await elementHandle.$eval("a", (el) =>
-          el.getAttribute("href"));
-        const category = await elementHandle.$eval("span.pill-category", (el) =>
-          el.textContent.trim());
-        const tags = await elementHandle.$$eval("span.pill-tag", (els) =>
-          els.map((el) =>
-            el.textContent.trim()
-          ));
-        const date = await elementHandle.$eval("time", (el) =>
-          el.getAttribute("datetime"));
+      articleElements.map(async (elementHandle: ElementHandle) => {
+        const title = await elementHandle.$eval(
+          "span.post-title",
+          (el: ElementHandle) => el.textContent.trim(),
+        );
+        const url = await elementHandle.$eval(
+          "a",
+          (el: ElementHandle) => el.getAttribute("href"),
+        );
+        const category = await elementHandle.$eval(
+          "span.pill-category",
+          (el: ElementHandle) => el.textContent.trim(),
+        );
+        const tags = await elementHandle.$$eval(
+          "span.pill-tag",
+          (els: ElementHandle[]) => els.map((el) => el.textContent.trim()),
+        );
+        const date = await elementHandle.$eval(
+          "time",
+          (el: ElementHandle) => el.getAttribute("datetime"),
+        );
 
         return { title, url, category, tags, date };
       }),
     );
 
     redis.set(blogName, JSON.stringify(articlesData));
-    console.log(articlesData);
   } catch (error) {
     console.log("🔥", error);
   } finally {
@@ -51,4 +62,4 @@ const handler = async (_request: Request): Promise<Response> => {
   return new Response("Hello, World!");
 };
 
-serve(handler);
+serve(handler, { port });
