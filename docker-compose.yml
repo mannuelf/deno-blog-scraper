@@ -1,33 +1,76 @@
 services:
+  traefik:
+    container_name: "traefik"
+    image: "traefik:v3.0"
+    environment:
+      - CF_EMAIL=${CF_EMAIL}
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+    command:
+      - --accesslog=true
+      - --api.dashboard=true
+      - --certificatesresolvers.appcertresolver.acme.email=${CF_EMAIL}
+      - --certificatesresolvers.appcertresolver.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.appcertresolver.acme.tlschallenge=true
+      - --entrypoints.web.address=:80
+      - --entryPoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.asDefault=true
+      - --entrypoints.websecure.http.tls.certresolver=appcertresolver
+      - --log.level=INFO
+      - --providers.docker.exposedByDefault=false
+      - --providers.docker.network=web
+      - --providers.file.filename=/traefik_dynamic.toml
+      - --accesslog.filepath=/var/log/traefik-access.log
+      - --log.filepath=/var/log/traefik.log
+    labels:
+      - traefik.enable=true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "letsencrypt:/letsencrypt"
+      - "./traefik_dynamic.toml:/traefik_dynamic.toml"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    restart: unless-stopped
+    networks:
+      - web
+
   backend:
+    container_name: scraperbackend
+    image: scraperbackend
     build:
       context: ./backend
     ports:
-      - 8000:8000
+      - 3000:3000
     depends_on:
       - redis
     networks:
-      - deno-scraper-network
+      - web
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`api.techreader.com`)"
-      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+      - "traefik.http.routers.backend.rule=Host(`scraperbackend.localhost`)"
+      - "traefik.http.services.backend.loadbalancer.server.port=3000"
 
   client:
+    container_name: scraperclient
+    image: scraperclient
     build:
       context: ./client
       args:
         GIT_REVISION: ${GIT_REVISION}
     ports:
-      - 5000:5000
+      - 8000:8000
     networks:
-      - deno-scraper-network
+      - web
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.client.rule=Host(`www.techreader.com`)"
-      - "traefik.http.services.client.loadbalancer.server.port=5000"
+      - "traefik.http.routers.client.rule=Host(`scraperclient.localhost`)"
+      - "traefik.http.services.client.loadbalancer.server.port=8000"
 
   redis:
+    container_name: scarperredis
+    image: redis:latest
     build:
       context: ./redis
     volumes:
@@ -35,10 +78,22 @@ services:
     ports:
       - 6379:6379
     networks:
-      - deno-scraper-network
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.redis.rule=Host(`redis.localhost`)"
+      - "traefik.http.services.redis.loadbalancer.server.port=6379"
 
 networks:
-  deno-scraper-network:
+  web:
+    driver: bridge
+    external: true
+    name: web
+  internal:
+    external: false
 
 volumes:
+  letsencrypt:
+    name: letsencrypt
   redis-data:
+    name: redis-data
