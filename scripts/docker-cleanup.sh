@@ -11,3 +11,7 @@ sudo docker network prune --force
 
 # Delete Docker Images
 sudo docker rmi $(docker images -a -q)
+
+export DOCKER_BUILDKIT=1
+
+sudo docker network create web
