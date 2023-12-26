@@ -8,3 +8,5 @@
 /playwright-report/
 /playwright/.cache/
 /tests/storageState/
+
+/redis/redis-data/
